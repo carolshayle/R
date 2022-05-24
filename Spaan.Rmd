@@ -1,0 +1,355 @@
+---
+title: "NEW YORK ASSIGNMENT"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+PART ONE
+
+1.1 Collecting and Importing data
+
+Data was collected from the provided sites and imported for analysis
+
+1.1 Importing the data
+
+lists <- read.csv('E:/New York Assign/lists2.csv')
+
+library(rgdal)
+library(sf)
+demo <- readOGR("E:/New York Assign/neighborhoods/NYC_Nhood ACS2008_12.shp")
+
+demo
+summary(lists)
+summary(demo)
+
+
+par(mar=c(1,1,1,1))
+plot(demo)
+
+
+1.2 Preparing the data
+
+setwd('E:/New York Assign')
+
+library(sf)
+library(terra)
+class(demo)
+
+The class for this data is sp, therefore it will be impossible to use the st_transform() function while transforming the crs. Therefore, convert the class to sf using the function set_as_sf.
+
+demo1 <- st_as_sf(demo)  
+
+class(demo1)
+st_crs(demo1)
+
+  #converting the crs to EPSG: 2263
+
+demo_transformed <- st_transform(demo1, 2263)
+st_crs(demo_transformed)
+
+The coordinate system was "+proj=longlat +datum=WGS84 +no_defs" which was default. It was converted to EPSG:2263. The CRS was prefered since it is the NAD83, (North American Datum of 1983) @Rilley2016.It is also the New York State Plane Long Island Zone local coordinate system that provides a high degree of accuracy and balances the shape and size of New York City zone.
+
+1.3 Discussion of the data
+
+Two data sets were used in this spatial data analysis. The first data was listings which was in comma delimited .csv format. It contained the information on Airbnbs in New York City according to their Neighborhood Tabulation Areas. Secondly, New York City ACS neighborhood dataset was used. It is in the ESRI shapefile format and contained a wide span of information about New York City. These include, the Unemployment Rate, the population over 18 and the gin coefficient which shall play a critical role in spatial analysis.
+
+# dataset 1; obtained from insideairbnb.com
+lists <- read.csv('E:/New York Assign/lists2.csv')
+#dataset 2: Obtained from geoda github site
+demo <- readOGR("E:/New York Assign/neighborhoods/NYC_Nhood ACS2008_12.shp")
+
+
+1.4 Mapping and Data visualization
+
+1.4.1 Airbnb in NYC at Neighborhood level
+visualizing the listings data
+lists
+plot(lists$longitude,lists$latitude, main= 'New York Listings')
+
+library(ggplot2)  # The grammar of graphics package
+library(maps)     # Provides latitude and longitude data for various maps
+library(dplyr)    # To assist with cleaning and organizing data
+
+
+Making a base map
+plot all states with ggplot2, using black borders and light blue fill
+
+Basemap <- ggplot() + 
+  geom_polygon( data=demo, aes(x=long, y=lat, group=group),
+                color="black", fill="lightblue" )
+Basemap 
+
+plot(lists$longitude,lists$latitude, main= 'New York Listings', add=TRUE, color='Blue')
+                
+      #customizing for the choropleth map
+library(base)
+library(GISTools)
+MergedNTAs <- merge(demo@data,lists, by = "boroname")
+MergedNTAs
+head(MergedNTAs)
+
+Map 1.1; Number of Listings per NTA 
+
+library(ggplot2)
+library(scales)
+library(ggmap)
+library(viridis)
+library(rgdal)
+
+mySHP <- choose.files()
+myFile <- readOGR(mySHP)
+class(myFile)
+
+myFile@data$id <- rownames(myFile@data)
+newUS <- fortify(myFile, region = "id")
+newdf <- merge(newUS, myFile@data, by = "id")
+Myplot <- ggplot() +
+ 
+  geom_polygon(data = newdf, aes(fill = field_1,
+                                 x = long,
+                                 y = lat,
+                                 group = group)) +
+  theme_nothing(legend = TRUE) + coord_map() + ggtitle("Listings Per NTA") + theme(plot.title = element_text(hjust =0.5))
+
+NicerPlot <- Myplot + scale_fill_viridis(option = "mako", direction = -1)
+NicerPlot
+
+![Map 1.1 Listings Per NTA](maps/prtonemaps/Correctmap1.1.jpg)
+
+Map 1.2 Average Price per NTA
+
+The Airbnb data was mostly in .csv format or geojson. Other spatial data, that is usually available is in .shp, ESRI shapefile format. The bais in this data is that it is difficult using it in other spatial analysis software such as Arcmap. However, it offers in-depth information, and can be used extensively in QGIS and R.
+
+![Map 1.2 Showing the Average Price Per NTA](final/finalmaps/partone/map 1.2.jpg)
+
+
+1.4.2 Socio-economic variables from ACS data
+
+par(mfrow=c(2,3))
+
+Map 1 is a choropleth map showing the number of listings per Neighborhood Tabulation area. On the other hand, Map 2 shows the average prices for the Airbnbs, all through New York City, and the places with high prices can be identified per Neighborhood Tabulation Area. The method of data classification used was Equal Quantile Counts. It was used during the classification of Listings per NTA in Map 1. Ultimately this method enabled visualization of the listings in every NTAs within a range of NTA’s with the lowest between 0 to 20 and 20 to 67, averagely between 67 to 300, and a high number of listings between 300 to 1700.
+The Airbnb data was mostly in .csv format or geojson. Other spatial data, that is usually available is in .shp, ESRI shapefile format. The bais in this data is that it is difficult using it in other spatial analysis software such as Arcmap. However, it offers in-depth information, and can be used extensively in QGIS and R.
+
+
+      # variables chosen include: Poor, and population over 18
+      
+Exploring the spatial distrbution using choropleths
+
+install.packages("GISTools")
+
+library(sp)
+library(ggplot2)
+library(RColorBrewer)
+library(GISTools)
+
+par(mar=c(1,1,1,1))
+
+Variable one, POOR
+
+x <- demo$poor
+myshading = auto.shading(x, n=7,
+                         cols=brewer.pal(7, "Blues"))
+
+choropleth(demo,x ,shading=myshading, main = "NEW YORK POOR")
+
+choro.legend(px='topleft', sh=myshading,fmt="%4.1f",cex=0.8)
+
+![Map 2.1 for Fisrt Variable Poor](final/finalmaps/partone/map 2.1.jpg)
+
+Variable two, population over 18
+
+y <- demo$popover18
+myshading = auto.shading(y, n=7,
+                         cols=brewer.pal(7, "YlOrRd"))
+choropleth(demo,y ,shading=myshading, main = "NEW YORK OVER 18 POPULATION")
+
+choro.legend(px='topleft', sh=myshading,fmt="%4.1f",cex=0.8)
+
+![Map 2.2 For Second Variable Population over 18](final/finalmaps/partone/map 2.2.jpg)
+
+DISCUSSION OF RESULTS FROM THE CHOROPLETH MAPS
+
+ The choropleth maps used a color scheme to implore the variables spatial distribution in New York City. For instance, in the population over 18 map, it is possible to view which areas have the greatest population with over 18 years. The color orange shows areas with fewer people above 18, which lies between 17,000 and 32000. After this,the color begins to intensify and assuming a red color to show areas with many people above 18. On the other hand, the choropleth map showing poor people in New York shows where there are huge numbers of the poor, the blue color shows the intensity where there are areas with many poor than others. The information can be used with the population over 18 to realize a bivariate relationship between the two. It would analyze the relationship between these two variables and facilitate decision making.There appears to be a linear relationship whereby there are zone with fewer poor people and the rate increases as specific zones are approached. For instance, in Staten Island, the rates are quite low, however, the rates begin to increase in Brooklyn and hit the highest rates.If this information was to be used in determining where the Airbnbs would cluster, it would mean that poverty rate and Airbnb clustering would be negatively correlated. It implies that Airbnbs would be dense in areas with low rates of poverty levels, like Staten Island compared to Brooklyn. The neighborhood type observed include the thiessen polygons. They contain boundaries whose space is closer to a point, the polygon's centre, within the area than without the area. They help to emphasize on Tobler's law where features closer to each other are more related than features further away. This law also assisted in delineating this typology.
+ 
+Hypothesis; In New York City, Airbnbs are most likely to be clustered in Manhattan and less Staten Island. 
+
+This is because there are low poverty rates around this area. Often, places with financial stability are said to be secure and security plays an essential role in determining the probability of Airbnbs. The situation would be different in places with high levels of poverty. The level of insecurity and crime rates would be high make the places unsafe for Airbnbs.
+
+![Map 2 Shows the bivariate relationship between the two variables, poor and popover18](final/finalmaps/partone/map 2.jpg)
+Bivariate relationships show the direct involvements between two variables. In this map, a relationship between poverty and population over 18 years gets investigated. The color ramp increasing from orange to red shows areas with population over 18 and the intensifying color ramp signifies places with high populations. On the other hand, the blue color ramp shows poverty levels in New York. Therefore, the bivariate legend shows areas where there is low population and poverty levels in the less intense orange, and in the darkest, the places where there is high population with high poverty levels. This analysis was chosen for the purposes of easier decision making from the visualization. In relation to BnB’s it is possible to relate these areas with the prices.
+# 1.4.3 COMBINING DATASETS
+# log of prices in point data
+
+v <- lists$price
+calcu <- log(v)
+
+lists
+logofprices <- calcu
+
+lists$logofprices <- calcu     # adds the calculated layer of logs of prices
+lists
+
+log <- lists$logofprices
+
+# exporst csv 
+
+csv <- write.csv(lists, 'lists2.csv')
+
+The listings data was exported as a csv, and input into QGIS. In the software, Qgis, the layer was saved as a shapefile. The shapefile was then imported in R for the development of choropleths.
+
+#importing the shapefile
+shp <- readOGR("E:/New York Assign/listingz.shp")
+shp
+
+st_crs(shp)
+class(shp)
+
+shp1 <- st_as_sf(shp)
+class(shp1)
+
+ #Transform the crs to EPSG:2263
+
+crs <- st_transform(shp1, "EPSG:2263")
+
+st_crs(crs)
+
+
+# Plotting the point and polygon plots using ggplot
+
+library(ggplot2)
+library(scales)
+library(ggmap)
+library(viridis)
+library(rgdal)
+
+mySHP <- choose.files()
+myFile <- readOGR(mySHP)
+class(myFile)
+
+myFile@data$id <- rownames(myFile@data)
+newUS <- fortify(myFile, region = "id")
+newdf <- merge(newUS, myFile@data, by = "id")
+Myplot <- ggplot() +
+ 
+  geom_polygon(data = newdf, aes(fill = poor,
+                                 x = long,
+                                 y = lat,
+                                 group = group)) +
+  theme_nothing(legend = TRUE) + coord_map() + ggtitle("New York poverty levels") + theme(plot.title = element_text(hjust =0.5))
+
+NicerPlot <- Myplot + scale_fill_viridis(option = "magma", direction = -1)
+NicerPlot
+
+  #Creation of Dot density map showing the log of prices
+  
+library(ggplot2)
+library(scales)
+library(ggmap)
+library(viridis)
+library(rgdal)
+
+mySHP <- choose.files()
+myFile <- readOGR(mySHP)
+class(myFile)
+
+myFile@data$id <- rownames(myFile@data)
+newUS <- fortify(myFile, region = "id")
+newdf <- merge(newUS, myFile@data, by = "id")
+Myplot <- ggplot() +
+ 
+  geom_point(data = newdf, aes(fill = logofprices,
+                                 x = longitude,
+                                 y = latitude,
+                                 group = group)) +
+  theme_nothing(legend = TRUE) + coord_map() + ggtitle("New York log of Prices") + theme(plot.title = element_text(hjust =0.5))
+
+NicerPlot <- Myplot + scale_fill_viridis(option = "magma", direction = -1)
+NicerPlot
+
+![Map 3.1 Shows the log of prices](final/finalmaps/partone/map 3.1.jpg) 
+
+![Map 3.2 Poor and prices](maps/prtonemaps/LOG.jpg)
+
+
+
+The map shows the relationship between poverty levesls and Airbnb prices in New York City. The first choropleth map shows the poverty distribution and shows which neighborhoods have high levels of poverty, while the second map shows the prices in relation to the poverty rates. It is visible that places with high poverty rates tend to have low prices, while the vice versa is true.
+
+PART TWO
+
+Raster Data
+
+Raster data stores spatial information in pixels in association to the specific geographic locations. Pixel values can be continuous for instance while representing elevation or categorical like when representing land use types @Dempsey2021. Often raster data is in digital images but the difference with digital photographs is that rasters are referenced, and have spatial information connecting data to the exact geographic location.
+
+Raster data is collected remotely often through the use of remote sensing techniques. These entails earth observation using satellites and aerial vehicles connected with sensors fit for imagery acquisition @Dempsey2021. Examples of datasets from such techniques include Sentinel 2 imagery and Landsat 8. Sentinel 2 imagery is acquired through the sentinel satellite mission. It can be used in this analysis due to its fine spatial resolution of 10m. It can be used to perform land use and land cover classification to identify areas most fit for building Airbnbs. More so it can be used to extract vector datasets through digitization, for the purpose of obtaining airbnbs that are not included in the listings and New York ACS data.
+
+
+2.2 Query OpenStreetMap data
+
+install.packages('osmdata')
+
+library(tidyverse)
+library(osmdata)
+library(sf)
+library(ggmap)
+
+Building a query
+
+#the first five features
+head(available_features())
+
+#amenities
+head(available_tags("amenity"))
+
+#shops
+head(available_tags("shop"))
+
+#building the query
+q <- getbb("Madrid") %>%
+      opq() %>%
+       add_osm_feature("amenity", "cinema")
+
+str(q) #query structure
+
+cinema <- osmdata_sf(q)
+
+cinema
+v <- save(cinema, file='New York City')
+v 
+
+#Importing as shapefile
+library(rgdal)
+Amen <- readOGR('E:/New York Assign/Ammenities/Amenity/Amenity Cinema.shp')
+
+2.1.1 MAP 4
+
+ Heatmap showing cinema distribution in New York City
+ 
+![Map 4 Heat map of cinemas. Shows where cinemas are clustered](maps/prtonemaps/heat.jpeg)
+ 
+2.1.2 Generating Buffers
+
+Buffers were generated around cinemas. The distance chosen for the buffer was 100 metres, the crs for the data was EPSG:2263 specific for New York and the units are in feet, therefore the buffer was approximately 328 feet wide around each cinema. In Staten Island there were two cinemas and no airbnb within the buffer. However, in the other NTA's there were approximately 125 airbnbs around a cinema within the spatial range. More so, NTA's such as Manhattan and Brooklyn had cinemas closer together in the buffer. These attributes would be influential while determining the airbnb of choice, for instance Staten Island would not be considered because there are few cinemas and no airbnbs surrounding them. However, the limitation for using the data sourced from OSM is that it is not regularly updated. Therefore, there might be some cinema's recently built in Staten Island but not updated in the OpenStreetMaps. The advantage for using this data is that it is open source, and easy to obtain therefore making spatial analysis simpler.
+
+2.3 Descriptive analysis
+
+The listings data from inside airbnb was used in this analysis. I chose to use Inverse Distance Weighting (IDW) method of smoothing and Interpolation. This is because it is a deterministic interpolation method where cells are assigned values inversely proportionate with the distance, whereby the closer the point is to the variable the greater the weight @GISgeography2021. It works in conjunction to Tobler's law where features near each other are more related than those further away.
+
+The software QGIS was used entirely for these part.K nearest neighbors algorithm was used in this analysis where the distance functions are stored and the new cases get classified according to their level of similarity @Sayad. The distance was in feet, and a spatial range of 328 ft, was used to regard any other feature around one.The clusters are evenly distributed around the city. The variable getting interpolated was prices. Therefore, the map shows places where airbnbs are expensive and places where they are cheap. High values are densely concentrated in areas such as Brooklyn and sparse in other areas. However, low prices are evenly distributed across New York. These research approach is helpful to investment bankers and real estate agents. It invites more research to determine why these areas have low prices and why others have high and determine what type of development needs to be done to improve these conditions.
+
+Map 5 For Descriptive Analysis
+
+![Map 5 IDW Interpolated and Smoothed Map of Listings and Airbnbs](final/finalmaps/parttwo/IDW.png)
+
+Spatial analysis of New York City data reveals a lot about the city demographics and their relationship with Airbnbs, and their prices. The visualizations prove that the hypothesis was true. For instance, map 4, shows that cinemas, a social amenity necessary when determining the Airbnbs locations are more concentrated in Brooklyn. More so, the bivariate map shows that there are relatively equal levels of low poverty and population over the age of 18 making it a conducive environment for building Airbnbs. Finally, the IDW interpolated log of prices map shows that the prices are high in Brooklynn. It implies that this is the place where they are valued most compared to other NTAs. 
+
+
+
+
